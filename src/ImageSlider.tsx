@@ -1,8 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  TouchEventHandler,
+  TouchEvent,
+  TouchList,
+  Touch,
+  useState,
+} from "react";
 
 const Gallery = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [selectedImage, setSelectedImage] = useState<string>();
+  const [currentSlide, setCurrentSlide] = useState<number>(0);
+  const [selectedImage, setSelectedImage] = useState<string | null>();
 
   const slides = [
     "bilder/rochen.jpg",
@@ -31,6 +37,62 @@ const Gallery = () => {
     setSelectedImage(undefined);
   };
 
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const minSwipeDistance: number = 50;
+
+  const isValidTargetTouches = (targetTouches: TouchList) => {
+    return targetTouches.length > 0;
+  };
+
+  const handleInvalidTargetTouches = () => {
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+
+  const onTouchStart: TouchEventHandler<HTMLDivElement> = (e: TouchEvent) => {
+    setTouchEnd(null); // Otherwise the swipe is fired even with usual touch events
+
+    let targetTouches: TouchList = e.targetTouches;
+    if (!isValidTargetTouches(targetTouches)) {
+      handleInvalidTargetTouches();
+      return;
+    }
+
+    let touch: Touch = targetTouches[0];
+    let clientX: number = touch.clientX;
+
+    setTouchStart(clientX);
+  };
+
+  const onTouchMove: TouchEventHandler<HTMLDivElement> = (e: TouchEvent) => {
+    let targetTouches: TouchList = e.targetTouches;
+    if (!isValidTargetTouches(targetTouches)) {
+      handleInvalidTargetTouches();
+      return;
+    }
+
+    let touch: Touch = targetTouches[0];
+    let clientX: number = touch.clientX;
+
+    setTouchEnd(clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe) {
+      nextSlide();
+    } else if (isRightSwipe) {
+      prevSlide();
+    }
+  };
+
   return (
     <section
       id="gallery"
@@ -38,7 +100,12 @@ const Gallery = () => {
     >
       <div className="p-4 bg-base-100 shadow-lg rounded-lg">
         <h2 className="text-2xl font-bold mb-4 text-center">Galerie</h2>
-        <div className="carousel w-full h-96 pb-4 relative ">
+        <div
+          className="carousel w-full h-96 pb-4 relative overflow-hidden"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
           <div
             className="carousel-inner flex transition-transform duration-500"
             style={{
@@ -59,7 +126,6 @@ const Gallery = () => {
               </div>
             ))}
           </div>
-
           <div className="absolute flex justify-between transform -translate-y-1/2 left-5 right-5 top-1/2 w-full">
             <button onClick={prevSlide} className="btn btn-circle shadow-lg">
               ❮
